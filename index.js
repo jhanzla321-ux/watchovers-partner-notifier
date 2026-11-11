@@ -24,24 +24,27 @@ app.get('/', (req, res) => {
 
 app.post('/webhook/order', async (req, res) => {
   try {
+    console.log('Webhook body received:', JSON.stringify(req.body));
     const order = req.body || {};
-    const orderName = order.name || 'Test Order';
-    const totalPrice = order.total_price || '0.00';
-    const currency = order.currency || 'USD';
-    const discountCodes = Array.isArray(order.discount_codes) ? order.discount_codes : [];
+    const discountCodes = order.discount_codes || [];
 
-    console.log('Received order:', orderName, 'Discounts:', discountCodes);
+    if (Array.isArray(discountCodes)) {
+      for (const dc of discountCodes) {
+        const code = dc && (dc.code || dc.title);
+        if (code) {
+          const codeKey = code.toLowerCase();
+          if (partnerEmailMap[codeKey]) {
+            const partnerEmail = partnerEmailMap[codeKey];
+            await transporter.sendMail({
+              from: process.env.SMTP_USER,
+              to: partnerEmail,
+              subject:  + '' + Commission Sale Notification: Code  + '' + ,
+              text:  + '' + Hello,\n\nA sale was generated using your discount code (). + '' + ,
+            });
+            console.log( + '' + Email sent to partner:  + '' + );
+          }
+        }
 
-    for (const dc of discountCodes) {
-      const codeKey = ((dc && dc.code) || '').toLowerCase();
-      if (partnerEmailMap[codeKey]) {
-        const partnerEmail = partnerEmailMap[codeKey];
-        await transporter.sendMail({
-          from: process.env.SMTP_USER,
-          to: partnerEmail,
-          subject: 'Commission Sale Notification',
-          text: 'A sale was generated using your discount code.',
-        });
       }
     }
 
